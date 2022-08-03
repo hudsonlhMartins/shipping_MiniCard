@@ -1,0 +1,46 @@
+.container_shipping{
+    margin-left: 1.5rem;
+    margin-top: .8rem;
+}
+.container_shipping label{
+    font-family: "Montserrat", sans-serif;
+}
+.container_shipping form{
+    display: flex;
+    align-items: center;
+    gap: .7rem;
+}
+.container_shipping button{
+    background-color: transparent;
+    outline: none;
+    border: 0;
+    cursor:  pointer;
+}
+.container_shipping button i{
+   font-size: 18px;
+}
+
+.input_shipping{
+    height: 32px;
+    /* border-radius: 20px; */
+    background: #f3eade;
+    padding-left: 0.5rem;
+    border: 0;
+    border-bottom: 1px solid #000;
+    outline: none;
+}
+
+.content_shipping{
+    display: flex;
+    align-items: center;
+    gap: 2rem;
+    margin-top: 0.5rem;
+    width: 100%;
+    max-width: 250px;
+    margin: 0 auto;
+    margin-top: 0.5rem;
+}
+.content_shipping span, .shipping_price{
+    font-family: "Montserrat", sans-serif;
+    font-size: 13px;
+}
