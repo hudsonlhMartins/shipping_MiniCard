@@ -1,7 +1,7 @@
 {
-  "vendor": "loja",
+  "vendor": "drogafuji",
   "name": "shipping",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "title": "shipping",
   "description": "shipping",
   "builders": {
@@ -11,8 +11,12 @@
   },
   "dependencies": {
     "vtex.styleguide": "9.x",
-    "vtex.order-placed": "2.x"
-
+    "vtex.order-placed": "2.x",
+    "vtex.product-context": "0.x",
+    "vtex.order-manager": "0.x",
+    "vtex.render-runtime": "8.x",
+    "vtex.order-shipping": "0.x",
+    "vtex.formatted-price": "0.x"
   },
   "registries": [
     "smartcheckout"
