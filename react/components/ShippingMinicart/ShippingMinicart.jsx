@@ -5,10 +5,11 @@ import useDebounce from './utils/useDebounce';
 import { canUseDOM } from 'vtex.render-runtime'
 import { Spinner } from 'vtex.styleguide'
 import { useCssHandles } from 'vtex.css-handles'
+import { CSS_HANDLES } from './utils/cssHandles'
+
+import { formated } from './utils/formated'
 
 
-
-const CSS_HANDLES = ['container_minicart', 'content_minicart', 'container_price', 'content_days', 'content_price']
 
 const ShippingMinicart = () => {
     const [cep, setCep] = useState('')
@@ -16,6 +17,8 @@ const ShippingMinicart = () => {
     const [itensCart, setItensCart] = useState([])
     const [hasError, setHasError] = useState(false)
     const [existCep, setExistCep] = useState(false)
+
+    const [loading, setLoading] = useState(false)
 
     const { useOrderForm } = OrderForm
     const { orderForm, setOrderForm } = useOrderForm()
@@ -27,6 +30,7 @@ const ShippingMinicart = () => {
             const { id, quantity, seller } = item
             const data = { id, quantity, seller }
             itensCart.push(data)
+            console.log('itensCart ==> ', data)
             setItensCart(itensCart)
         })
     }
@@ -47,6 +51,7 @@ const ShippingMinicart = () => {
             'country': 'BRA',
         };
 
+        setLoading(true)
         let request = await fetch(url, {
             method: 'POST',
             headers: {
@@ -60,21 +65,21 @@ const ShippingMinicart = () => {
         //console.log('dataformated ===> ', res)
 
         let priceSum = res.logisticsInfo.reduce((acc, curr) => {
-            return acc + curr.slas[0].listPrice
+            return acc + curr.slas[0].price
         }, 0)
 
         const newPrice = formatedPrice(priceSum)
 
         const dataFormated = {
             'name': res.logisticsInfo[0].slas[0].name,
-            'price': res.logisticsInfo[0].slas[0].listPrice,
             'priceFormated': newPrice,
             'days': res.logisticsInfo[0].slas[0].shippingEstimate.replace('bd', ''),
             'cep': res.postalCode
         }
-        //console.log('dataFormated ===> ', dataFormated)
+        console.log('res.logisticsInfo[0].slas ===> ', res.logisticsInfo[0].slas)
         setAddress(dataFormated)
         saveOrderForm()
+
     }
 
 
@@ -109,13 +114,14 @@ const ShippingMinicart = () => {
         postApiShipping(url, data).then(res => res.json()).then(data => {
             //console.log('resultado do seveOrder ==> ', data)
             setExistCep(true)
+            setLoading(false)
         })
     }
 
     const removeCep = () => {
         const id = orderForm?.id
         const url = `/api/checkout/pub/orderForm/${id}/attachments/shippingData`
-
+        setLoading(true)
         const data = {
             selectedAddresses: null
         }
@@ -123,12 +129,11 @@ const ShippingMinicart = () => {
         postApiShipping(url, data).then((data) => {
             setExistCep(false)
             setHasError(false)
+            setAddress({})
+            setCep('')
+            setLoading(false)
         })
 
-        setTimeout(() => {
-            setExistCep(false)
-            setAddress({})
-        }, 800)
         // setHasError(false)
     }
 
@@ -156,30 +161,23 @@ const ShippingMinicart = () => {
                 days: estimate,
                 priceFormated: formatedPrice(data?.price)
             }
-
             return dataFormated
         }
     }
+
+
 
     const getAddress = () => {
         const address = orderForm?.shipping?.deliveryOptions
         const cep = orderForm?.shipping?.selectedAddress?.postalCode
 
 
-        let addressFilter = address.reduce((prev, curr) => {
-            if (prev) {
-                if (prev.price <= curr.price) {
-                    return prev
-                } else {
-                    return curr
-                }
-            }
-        }, {})
+        const addressFilter = formated.getMenorPrice(address)
 
         const addressFormated = formatedAddress(addressFilter)
         addressFormated.cep = cep
 
-        console.log(addressFormated)
+
         setAddress(addressFormated)
     }
 
@@ -199,51 +197,62 @@ const ShippingMinicart = () => {
 
     return (
         canUseDOM ? (
-            <div className={`${handles.container_minicart}`}>
-                <div className={`${handles.content_minicart} ${style.container_shipping}`}>
-                    {existCep ? (
-                        <div>
-                            <div>
-                                <span>
-                                    Cep:
-                                </span>
-                                <span>
-                                    {cep.length ? cep : address.cep}
-                                </span>
-                            </div>
+            <>
+                {!loading ? (
 
-                            <span onClick={removeCep}>Limpa</span>
+                    <div className={`${handles.container_minicart}`}>
+                        <div className={`${handles.content_minicart} ${style.container_shipping}`}>
+                            {existCep ? (
+                                <div className={`${handles.container_cep_save} ${style.container_cep_save}`}>
+                                    <div className={`${handles.content_cep} ${style.content_cep}`}>
+                                        <span>
+                                            Cep:
+                                        </span>
+                                        <span className={`${handles.number_cep}`}>
+                                            {cep.length ? cep : address.cep}
+                                        </span>
+                                    </div>
+
+                                    <span onClick={removeCep} className={`${handles.btn_limpa} ${style.btn_limpa}`}>
+                                        <i>
+                                            <svg className={`${handles.icon_limpa}`} stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 512 512" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M289.94 256l95-95A24 24 0 00351 127l-95 95-95-95a24 24 0 00-34 34l95 95-95 95a24 24 0 1034 34l95-95 95 95a24 24 0 0034-34z"></path></svg>
+                                        </i>
+                                    </span>
+                                </div>
+                            ) : (
+                                <form onSubmit={handleSubmitForm}>
+                                    <label htmlFor="shipping">frete</label>
+                                    <input className={style.input_shipping} id='shipping' type='text' max='8' min={'8'}
+                                        value={cep}
+                                        onChange={e => setCep(e.target.value)}
+                                        placeholder='calcula o prazo'
+                                    />
+                                    <button type='submit'>
+                                        <i>
+                                            <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 1024 1024" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M869 487.8L491.2 159.9c-2.9-2.5-6.6-3.9-10.5-3.9h-88.5c-7.4 0-10.8 9.2-5.2 14l350.2 304H152c-4.4 0-8 3.6-8 8v60c0 4.4 3.6 8 8 8h585.1L386.9 854c-5.6 4.9-2.2 14 5.2 14h91.5c1.9 0 3.8-.7 5.2-2L869 536.2a32.07 32.07 0 0 0 0-48.4z"></path></svg>
+                                        </i>
+                                    </button>
+                                </form>
+
+                            )}
+
+
+
+                            {hasError && <div className={style.error}>CEP inválido</div>}
+                            {address?.priceFormated && hasError == false && (
+                                <div className={`${style.content_shipping} ${handles.container_price}`}>
+                                    <span className={`${style.shipping_days} ${handles.content_days}`}> em até {address.days} {Number(address.days) > 1 ? 'dias' : 'dia'}</span>
+                                    <sapn className={`${style.shipping_price} ${handles.content_price}`}>{address.priceFormated == '0,00' ? 'grátis' : 'R$ ' + address.priceFormated}</sapn>
+                                </div>
+                            )}
+
                         </div>
-                    ) : (
-                        <form onSubmit={handleSubmitForm}>
-                            <label htmlFor="shipping">frete</label>
-                            <input className={style.input_shipping} id='shipping' type='text' max='8' min={'8'}
-                                value={cep}
-                                onChange={e => setCep(e.target.value)}
-                                placeholder='calcula o prazo'
-                            />
-                            <button type='submit'>
-                                <i>
-                                    <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 1024 1024" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M869 487.8L491.2 159.9c-2.9-2.5-6.6-3.9-10.5-3.9h-88.5c-7.4 0-10.8 9.2-5.2 14l350.2 304H152c-4.4 0-8 3.6-8 8v60c0 4.4 3.6 8 8 8h585.1L386.9 854c-5.6 4.9-2.2 14 5.2 14h91.5c1.9 0 3.8-.7 5.2-2L869 536.2a32.07 32.07 0 0 0 0-48.4z"></path></svg>
-                                </i>
-                            </button>
-                        </form>
 
-                    )}
-
-
-
-                    {hasError && <div className={style.error}>CEP inválido</div>}
-                    {address?.priceFormated && hasError == false && (
-                        <div className={`${style.content_shipping} ${handles.container_price}`}>
-                            <span className={`${style.shipping_days} ${handles.content_days}`}> em até {address.days} {Number(address.days) > 1 ? 'dias' : 'dia'}</span>
-                            <sapn className={`${style.shipping_price} ${handles.content_price}`}>{address.priceFormated}</sapn>
-                        </div>
-                    )}
-
-                </div>
-
-            </div>
+                    </div>
+                ) : (
+                    <h1>Loading</h1>
+                )}
+            </>
 
         ) : (
             <div className={`${style.container_shipping}`}>

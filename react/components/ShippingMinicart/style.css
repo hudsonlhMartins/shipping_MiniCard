@@ -44,3 +44,19 @@
     font-family: "Montserrat", sans-serif;
     font-size: 13px;
 }
+
+.container_cep_save{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.content_cep{
+    display: flex;
+    align-items: center;
+    gap: 2rem;
+}
+
+.btn_limpa{
+    cursor: pointer;
+}
