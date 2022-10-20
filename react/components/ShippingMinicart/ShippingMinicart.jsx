@@ -4,9 +4,11 @@ import style from './style.css'
 import useDebounce from './utils/useDebounce';
 import { canUseDOM } from 'vtex.render-runtime'
 import { Spinner } from 'vtex.styleguide'
-import { FormattedPrice } from 'vtex.formatted-price'
+import { useCssHandles } from 'vtex.css-handles'
 
 
+
+const CSS_HANDLES = ['container_minicart', 'content_minicart', 'container_price', 'content_days', 'content_price']
 
 const ShippingMinicart = () => {
     const [cep, setCep] = useState('')
@@ -17,6 +19,8 @@ const ShippingMinicart = () => {
 
     const { useOrderForm } = OrderForm
     const { orderForm, setOrderForm } = useOrderForm()
+
+    const { handles } = useCssHandles(CSS_HANDLES)
 
     const getItensOrderForm = () => {
         orderForm.items.forEach(item => {
@@ -145,13 +149,16 @@ const ShippingMinicart = () => {
 
 
     const formatedAddress = (data) => {
-        const estimate = Number(data.estimate.replace('bd', ''))
-        const dataFormated = {
-            days: estimate,
-            priceFormated: formatedPrice(data.price)
-        }
+        console.log('data ==> ', data)
+        if (data) {
+            const estimate = Number(data?.estimate?.replace('bd', ''))
+            const dataFormated = {
+                days: estimate,
+                priceFormated: formatedPrice(data?.price)
+            }
 
-        return dataFormated
+            return dataFormated
+        }
     }
 
     const getAddress = () => {
@@ -192,8 +199,8 @@ const ShippingMinicart = () => {
 
     return (
         canUseDOM ? (
-            <>
-                <div className={style.container_shipping}>
+            <div className={`${handles.container_minicart}`}>
+                <div className={`${handles.content_minicart} ${style.container_shipping}`}>
                     {existCep ? (
                         <div>
                             <div>
@@ -228,15 +235,15 @@ const ShippingMinicart = () => {
 
                     {hasError && <div className={style.error}>CEP inválido</div>}
                     {address?.priceFormated && hasError == false && (
-                        <div className={style.content_shipping}>
-                            <span className={style.shipping_days}>em até {address.days} {Number(address.days) > 1 ? 'dias' : 'dia'}</span>
-                            <sapn className={style.shipping_price}>{address.priceFormated}</sapn>
+                        <div className={`${style.content_shipping} ${handles.container_price}`}>
+                            <span className={`${style.shipping_days} ${handles.content_days}`}> em até {address.days} {Number(address.days) > 1 ? 'dias' : 'dia'}</span>
+                            <sapn className={`${style.shipping_price} ${handles.content_price}`}>{address.priceFormated}</sapn>
                         </div>
                     )}
 
                 </div>
 
-            </>
+            </div>
 
         ) : (
             <div className={`${style.container_shipping}`}>
