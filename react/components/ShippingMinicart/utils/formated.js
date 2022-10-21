@@ -12,5 +12,23 @@ export const formated = {
     }, {})
 
     return addressFilter
+  },
+
+  formatedPrice: (price) => {
+    const priceFormated = price * 0.01
+    return priceFormated.toFixed(2).replace('.', ',')
+  },
+
+  formatedAddress: (data) => {
+    if (data.estimate) {
+      const estimate = Number(data.estimate.replace('bd', ''))
+      const dataFormated = {
+        days: estimate,
+        priceFormated: formated.formatedPrice(data.price)
+      }
+      return dataFormated
+    }
   }
+
+
 }

@@ -8,15 +8,17 @@ import { useCssHandles } from 'vtex.css-handles'
 import { CSS_HANDLES } from './utils/cssHandles'
 
 import { formated } from './utils/formated'
-
+import { api } from './utils/api'
 
 
 const ShippingMinicart = () => {
     const [cep, setCep] = useState('')
     const [address, setAddress] = useState({})
-    const [itensCart, setItensCart] = useState([])
+    //const [itensCart, setItensCart] = useState([])
     const [hasError, setHasError] = useState(false)
     const [existCep, setExistCep] = useState(false)
+
+    const [orderFormIdSave, setOrderFormIdSave] = useState('')
 
     const [loading, setLoading] = useState(false)
 
@@ -26,55 +28,33 @@ const ShippingMinicart = () => {
     const { handles } = useCssHandles(CSS_HANDLES)
 
     const getItensOrderForm = () => {
+        const itensCart = []
         orderForm.items.forEach(item => {
             const { id, quantity, seller } = item
             const data = { id, quantity, seller }
             itensCart.push(data)
             console.log('itensCart ==> ', data)
-            setItensCart(itensCart)
         })
-    }
 
-    const formatedPrice = (price) => {
-        const priceFormated = price * 0.01
-        return priceFormated.toFixed(2).replace('.', ',')
+        return itensCart
     }
-
 
     const getApi = async () => {
-        const url = `/api/checkout/pub/orderForms/simulation/?sc=1`
-        getItensOrderForm()
-
-        let data = {
-            'items': itensCart,
-            'postalCode': cep,
-            'country': 'BRA',
-        };
-
+        const itensCart = getItensOrderForm()
         setLoading(true)
-        let request = await fetch(url, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'accept': 'application/json'
-            },
-            body: JSON.stringify(data)
-        })
-        const res = await request.json()
+        const res = await api.simulationCep(itensCart, cep)
 
-        //console.log('dataformated ===> ', res)
-
-        let priceSum = res.logisticsInfo.reduce((acc, curr) => {
+        let priceSum = res?.logisticsInfo?.reduce((acc, curr) => {
             return acc + curr.slas[0].price
         }, 0)
 
-        const newPrice = formatedPrice(priceSum)
+        const newPrice = formated.formatedPrice(priceSum)
 
         const dataFormated = {
-            'name': res.logisticsInfo[0].slas[0].name,
+            'name': res?.logisticsInfo[0]?.slas[0]?.name,
             'priceFormated': newPrice,
-            'days': res.logisticsInfo[0].slas[0].shippingEstimate.replace('bd', ''),
-            'cep': res.postalCode
+            'days': res?.logisticsInfo[0]?.slas[0]?.shippingEstimate?.replace('bd', ''),
+            'cep': res?.postalCode
         }
         console.log('res.logisticsInfo[0].slas ===> ', res.logisticsInfo[0].slas)
         setAddress(dataFormated)
@@ -83,22 +63,7 @@ const ShippingMinicart = () => {
     }
 
 
-
-    const postApiShipping = async (url, data) => {
-        const res = await fetch(url, {
-            method: "POST",
-            headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json'
-            },
-            body: JSON.stringify(data)
-        })
-        return res
-    }
-
     const saveOrderForm = () => {
-        // /api/checkout/pub/orderForm/c97cf811fb0a443786bdc78d138ce74c/attachments/shippingData
-        // /api/checkout/pub/orderForm/13123/attachments/shippingData
         const id = orderForm?.id
         const url = `/api/checkout/pub/orderForm/${id}/attachments/shippingData`
         const data = {
@@ -111,14 +76,15 @@ const ShippingMinicart = () => {
             ]
         }
 
-        postApiShipping(url, data).then(res => res.json()).then(data => {
-            //console.log('resultado do seveOrder ==> ', data)
+        api.postApiShipping(url, data).then(res => res.json()).then(data => {
+            console.log('resultado do seveOrder ==> ', data)
             setExistCep(true)
+            setOrderFormIdSave(data?.orderFormId)
             setLoading(false)
         })
     }
 
-    const removeCep = () => {
+    const removeCep = async () => {
         const id = orderForm?.id
         const url = `/api/checkout/pub/orderForm/${id}/attachments/shippingData`
         setLoading(true)
@@ -126,15 +92,13 @@ const ShippingMinicart = () => {
             selectedAddresses: null
         }
 
-        postApiShipping(url, data).then((data) => {
+        api.postApiShipping(url, data).then((data) => {
             setExistCep(false)
             setHasError(false)
             setAddress({})
             setCep('')
             setLoading(false)
         })
-
-        // setHasError(false)
     }
 
 
@@ -152,45 +116,48 @@ const ShippingMinicart = () => {
     }
 
 
-
-    const formatedAddress = (data) => {
-        console.log('data ==> ', data)
-        if (data) {
-            const estimate = Number(data?.estimate?.replace('bd', ''))
-            const dataFormated = {
-                days: estimate,
-                priceFormated: formatedPrice(data?.price)
-            }
-            return dataFormated
-        }
-    }
-
-
-
-    const getAddress = () => {
+    const getAddress = async () => {
         const address = orderForm?.shipping?.deliveryOptions
         const cep = orderForm?.shipping?.selectedAddress?.postalCode
-
+        setLoading(true)
 
         const addressFilter = formated.getMenorPrice(address)
 
-        const addressFormated = formatedAddress(addressFilter)
-        addressFormated.cep = cep
-
-
-        setAddress(addressFormated)
+        const addressFormated = formated.formatedAddress(addressFilter)
+        console.log('addressFormated ==> ', addressFormated)
+        if (addressFormated) {
+            addressFormated.cep = cep
+            setAddress(addressFormated)
+            setExistCep(true)
+            setLoading(false)
+        } else {
+            await removeCep()
+            setAddress({})
+            setExistCep(false)
+            setCep('')
+            setLoading(false)
+        }
     }
 
     useEffect(() => {
-        // console.log('orerfOmr ==> ', orderForm?.shipping)
+        console.log('orerfOmr ==> ', orderForm)
         const cepOrder = orderForm?.shipping?.selectedAddress
+        console.log('carregou')
 
         if (!cepOrder) return false
 
+        console.log('são iguais os oreder ==> ', orderForm?.id == orderFormIdSave)
+
+        if (orderForm?.id != orderFormIdSave && orderFormIdSave.length > 0) {
+            console.log('entrou aqui')
+            setAddress({})
+            setCep('')
+            setExistCep(false)
+            return false
+        }
+
         setHasError(false)
         getAddress()
-        setExistCep(true)
-
 
 
     }, [])
@@ -250,7 +217,9 @@ const ShippingMinicart = () => {
 
                     </div>
                 ) : (
-                    <h1>Loading</h1>
+                    <div className={`${style.container_shipping}`}>
+                        <Spinner className={style.spinner} color="currentColor" size={20} />
+                    </div>
                 )}
             </>
 
